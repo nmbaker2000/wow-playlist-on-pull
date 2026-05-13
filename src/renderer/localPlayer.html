@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Media Player</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+        background: #0d100f;
+        color: #ece8dc;
+        --font-display: Bahnschrift, "Segoe UI Variable Display", "Arial Narrow", "Segoe UI", sans-serif;
+        --font-code: "Cascadia Mono", Consolas, monospace;
+        --panel: rgba(20, 23, 21, 0.94);
+        --border: rgba(223, 226, 214, 0.14);
+        --muted: #898d81;
+        --muted-strong: #c8c4b8;
+        --accent: #78a99a;
+        --amber: #c7953e;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          linear-gradient(180deg, rgba(236, 232, 220, 0.035), transparent 240px),
+          repeating-linear-gradient(90deg, rgba(223, 226, 214, 0.028) 0, rgba(223, 226, 214, 0.028) 1px, transparent 1px, transparent 64px),
+          repeating-linear-gradient(0deg, rgba(223, 226, 214, 0.022) 0, rgba(223, 226, 214, 0.022) 1px, transparent 1px, transparent 18px),
+          #0d100f;
+      }
+
+      main {
+        position: relative;
+        width: min(760px, calc(100vw - 48px));
+        display: grid;
+        gap: 18px;
+        padding: 26px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel);
+        box-shadow: 0 26px 80px rgba(0, 0, 0, 0.45);
+        overflow: hidden;
+      }
+
+      main::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(199, 149, 62, 0.12), transparent 92px),
+          repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(223, 226, 214, 0.035) 32px),
+          repeating-linear-gradient(0deg, transparent 0, transparent 15px, rgba(223, 226, 214, 0.03) 16px);
+      }
+
+      main > * {
+        position: relative;
+      }
+
+      .topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(1.8rem, 3vw, 2.7rem);
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted-strong);
+        overflow-wrap: anywhere;
+      }
+
+      .label,
+      #counter {
+        color: var(--amber);
+        font-family: var(--font-code);
+        font-size: 0.75rem;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .meta-card {
+        display: grid;
+        gap: 6px;
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--amber);
+        border-radius: 6px;
+        background: rgba(223, 226, 214, 0.055);
+      }
+
+      .meta-card span {
+        color: var(--muted);
+        font-family: var(--font-code);
+        font-size: 0.76rem;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .meta-card strong {
+        overflow: hidden;
+        color: #ece8dc;
+        font-family: var(--font-display);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      audio {
+        width: 100%;
+        accent-color: var(--amber);
+      }
+
+      @media (max-width: 640px) {
+        .topline,
+        .meta-grid {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topline">
+        <p class="label">Now firing</p>
+        <p id="counter">Local Media</p>
+      </div>
+      <h1 id="title">Ready</h1>
+      <div class="meta-grid">
+        <div class="meta-card">
+          <span>Source</span>
+          <strong id="source">Local files</strong>
+        </div>
+        <div class="meta-card">
+          <span>Queue</span>
+          <strong id="queueState">0 tracks</strong>
+        </div>
+        <div class="meta-card">
+          <span>Shuffle</span>
+          <strong id="shuffleState">Off</strong>
+        </div>
+      </div>
+      <p id="path"></p>
+      <audio id="audio" controls></audio>
+    </main>
+    <script src="./localPlayer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WoW Pull Playlist</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="header">
+        <div>
+          <p class="eyebrow">Raid-night music control</p>
+          <h1>Pull Playlist</h1>
+        </div>
+        <div class="header-actions">
+          <div class="status">
+            <span class="status-dot"></span>
+            <span id="statusText">Idle</span>
+          </div>
+          <button id="openSettings" type="button" class="icon-button" aria-label="Open settings" title="Settings">&#9881;</button>
+        </div>
+      </section>
+
+      <section id="dashboardView" class="view active">
+        <section class="raid-console">
+          <div class="readiness-card">
+            <div class="readiness-topline">
+              <span class="console-label">Raid Control</span>
+              <span id="watchStatePill" class="state-pill">Standing by</span>
+            </div>
+            <h2 id="readinessTitle">Stand by for the pull</h2>
+            <p id="readinessCopy">Select a combat log and cue a playlist, then arm the watcher before the next boss.</p>
+
+            <div class="readiness-grid">
+              <div class="readiness-tile" data-readiness="log">
+                <span>Combat log</span>
+                <strong id="logReadiness">Not armed</strong>
+              </div>
+              <div class="readiness-tile" data-readiness="playlist">
+                <span>Default cue</span>
+                <strong id="defaultPlaylistSummary">Not configured</strong>
+              </div>
+              <div class="readiness-tile" data-readiness="boss">
+                <span>Boss cues</span>
+                <strong id="encounterPlaylistSummary">0 configured</strong>
+              </div>
+              <div class="readiness-tile" data-readiness="provider">
+                <span>Playback route</span>
+                <strong id="providerSummary">Not configured</strong>
+              </div>
+              <div class="readiness-tile" data-readiness="preload">
+                <span>Preload</span>
+                <strong id="preloadSummary">Enabled</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="arming-panel">
+            <label>
+              <span>Combat log feed</span>
+              <div class="input-row">
+                <input id="logPath" type="text" placeholder="Select WoWCombatLog.txt" readonly />
+                <button id="selectLog" type="button">Browse</button>
+              </div>
+            </label>
+
+            <div class="log-discovery">
+              <button id="discoverLogs" type="button">Scan for logs</button>
+              <ul id="discoveredLogs"></ul>
+            </div>
+
+            <label class="toggle-row preload-toggle">
+              <input id="preloadEnabled" type="checkbox" checked />
+              <span>Prime playlist before pull</span>
+            </label>
+
+            <div class="actions">
+              <button id="start" type="button" class="primary">Arm Pull Watch</button>
+              <button id="stop" type="button">Stand down</button>
+              <button id="testPlaylist" type="button">Fire test cue</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="activity">
+          <div class="section-heading">
+            <div>
+              <span class="console-label">Combat log timeline</span>
+              <h2>Pull Timeline</h2>
+            </div>
+          </div>
+          <ul id="eventList"></ul>
+        </section>
+      </section>
+
+      <div id="settingsModal" class="modal-backdrop" hidden>
+        <section class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+          <h2 id="settingsTitle" class="sr-only">Settings</h2>
+          <button id="closeSettings" type="button" class="settings-close" aria-label="Close settings" title="Close">x</button>
+
+          <div class="settings-layout">
+            <nav class="settings-menu" aria-label="Settings sections">
+              <div class="settings-app-header">
+                <p>Pull Playlist</p>
+                <div class="settings-status">
+                  <span class="status-dot"></span>
+                  <span id="settingsStatusText">Idle</span>
+                </div>
+              </div>
+
+              <span class="settings-menu-label">Setup</span>
+              <button type="button" class="active" data-settings-section="general">General</button>
+              <button type="button" data-settings-section="playlistProviders">Playlist Providers</button>
+
+              <span class="settings-menu-label">Playlists</span>
+              <button type="button" data-settings-section="defaultPlaylist">Default Playlist</button>
+              <button type="button" data-settings-section="encounterPlaylists">Boss Cues</button>
+            </nav>
+
+            <div class="settings-main">
+              <div class="settings-content">
+                <section class="settings-section active" data-settings-panel="general">
+                  <div class="settings-page-heading">
+                    <h2>General</h2>
+                  </div>
+
+                  <label>
+                    <span>Combat log</span>
+                    <div class="input-row">
+                      <input id="settingsLogPath" type="text" placeholder="Select WoWCombatLog.txt" readonly />
+                      <button id="settingsSelectLog" type="button">Browse</button>
+                    </div>
+                  </label>
+
+                  <label class="toggle-row">
+                    <input id="settingsPreloadEnabled" type="checkbox" checked />
+                    <span>Preload playlist when watching starts</span>
+                  </label>
+
+                  <fieldset class="segmented-field">
+                    <legend>Theme</legend>
+                    <div class="theme-toggle" role="radiogroup" aria-label="Theme">
+                      <label>
+                        <input type="radio" name="theme" value="dark" />
+                        <span>Dark</span>
+                      </label>
+                      <label>
+                        <input type="radio" name="theme" value="light" />
+                        <span>Light</span>
+                      </label>
+                    </div>
+                  </fieldset>
+                </section>
+
+                <section class="settings-section" data-settings-panel="playlistProviders">
+                  <div class="settings-page-heading">
+                    <h2>Playlist Providers</h2>
+                  </div>
+
+                  <div class="provider-settings-layout">
+                    <nav class="provider-menu" aria-label="Playlist provider settings">
+                      <button type="button" class="active" data-provider-section="youtube">YouTube</button>
+                      <button type="button" data-provider-section="local">Local Media</button>
+                    </nav>
+
+                    <section class="provider-settings-panel active" data-provider-panel="youtube">
+                      <div class="section-heading">
+                        <h3>YouTube</h3>
+                        <button id="oauthHelpToggle" type="button" class="icon-help" aria-expanded="false" aria-controls="oauthHelp">?</button>
+                      </div>
+                      <div id="oauthHelp" class="help-panel" hidden>
+                        <p>Create a Google Cloud project, enable YouTube Data API v3, configure an External OAuth consent screen, add yourself as a test user, then create a Desktop app OAuth client.</p>
+                        <p>Copy that Desktop app Client ID and Client Secret here. Google treats Desktop app secrets as non-confidential, but this app still stores them encrypted when secure storage is available.</p>
+                      </div>
+                      <label>
+                        <span>YouTube OAuth Client ID</span>
+                        <div class="input-row oauth-client-row">
+                          <input id="youtubeOAuthClientId" type="password" placeholder="000000000000-...apps.googleusercontent.com" autocomplete="off" />
+                          <button id="toggleOAuthClientId" type="button">Show</button>
+                        </div>
+                      </label>
+                      <label>
+                        <span>YouTube OAuth Client Secret</span>
+                        <div class="input-row oauth-client-row">
+                          <input id="youtubeOAuthClientSecret" type="password" placeholder="GOCSPX-..." autocomplete="off" />
+                          <button id="toggleOAuthClientSecret" type="button">Show</button>
+                        </div>
+                      </label>
+                      <div class="provider-accounts" data-provider-accounts="youtube"></div>
+                    </section>
+
+                    <section class="provider-settings-panel" data-provider-panel="local">
+                      <div class="section-heading">
+                        <h3>Local Media</h3>
+                      </div>
+                      <div class="help-panel">
+                        <p>Choose audio files or music folders from this computer. Playback uses Electron local file playback, and folder sources are scanned recursively when a playlist starts.</p>
+                      </div>
+                    </section>
+                  </div>
+                </section>
+
+                <section class="settings-section" data-settings-panel="defaultPlaylist">
+                  <div class="settings-page-heading">
+                    <h2>Default Playlist</h2>
+                  </div>
+                  <div class="settings-grid">
+                    <label>
+                      <span>Platform</span>
+                      <select id="defaultProvider"></select>
+                    </label>
+
+                    <label>
+                      <span>Account playlist</span>
+                      <select id="defaultPlaylistPicker"></select>
+                    </label>
+
+                    <label>
+                      <span>Manual URL or ID</span>
+                      <input id="defaultPlaylist" type="text" placeholder="https://www.youtube.com/playlist?list=..." />
+                    </label>
+
+                    <div id="defaultLocalMedia" class="local-media-controls" hidden>
+                      <span>Local sources</span>
+                      <strong data-local-summary>None selected</strong>
+                      <div>
+                        <button type="button" data-local-action="files">Add files</button>
+                        <button type="button" data-local-action="folder">Add folder</button>
+                        <button type="button" data-local-action="clear">Clear</button>
+                      </div>
+                    </div>
+
+                    <label class="toggle-row setting-toggle">
+                      <input id="defaultShuffle" type="checkbox" />
+                      <span>Shuffle</span>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="settings-section" data-settings-panel="encounterPlaylists">
+                  <div class="settings-page-heading section-heading">
+                    <h2>Boss Cues</h2>
+                    <button id="addEncounter" type="button">Add boss cue</button>
+                  </div>
+                  <div class="encounter-settings-layout">
+                    <nav id="encounterExpansionMenu" class="provider-menu encounter-expansion-menu" aria-label="Encounter expansions"></nav>
+                    <div id="encounterRows" class="encounter-raid-panels"></div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="settings-actions">
+                <button id="cancelSettings" type="button">Cancel</button>
+                <button id="saveSettings" type="button" class="primary">Save settings</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
