@@ -45,8 +45,22 @@ test("rejects empty playlist input", () => {
   assert.throws(() => extractYouTubePlaylistId("  "), /required/);
 });
 
-test("rejects URLs without a list query parameter", () => {
-  assert.throws(() => extractYouTubePlaylistId("https://www.youtube.com/watch?v=abc"), /playlist/);
+test("accepts standalone YouTube video URLs as cues", () => {
+  assert.deepEqual(
+    parseYouTubePlaylistInput("https://www.youtube.com/watch?v=yJqZSISuXZM"),
+    {
+      playlistId: null,
+      videoId: "yJqZSISuXZM"
+    }
+  );
+});
+
+test("playlist id extraction still rejects standalone YouTube video URLs", () => {
+  assert.throws(() => extractYouTubePlaylistId("https://www.youtube.com/watch?v=yJqZSISuXZM"), /playlist/);
+});
+
+test("rejects URLs without playlist or video identifiers", () => {
+  assert.throws(() => extractYouTubePlaylistId("https://www.youtube.com/channel/abc"), /valid YouTube/);
 });
 
 test("builds autoplaying watch playlist URL when video id is available", () => {
@@ -70,6 +84,21 @@ test("builds playlist page URL for raw playlist ids", () => {
 
   assert.equal(url.origin + url.pathname, "https://www.youtube.com/playlist");
   assert.equal(url.searchParams.get("list"), "PLabc_123-XYZ");
+  assert.equal(url.searchParams.get("autoplay"), "1");
+});
+
+test("builds watch URL for standalone video cues", () => {
+  const provider = new YouTubePlaylistProvider();
+  const playbackUrl = provider.buildPlaybackUrl({
+    playlistUrlOrId: "https://www.youtube.com/watch?v=yJqZSISuXZM",
+    shuffleEnabled: true
+  });
+  const url = new URL(playbackUrl);
+
+  assert.equal(url.origin + url.pathname, "https://www.youtube.com/watch");
+  assert.equal(url.searchParams.get("v"), "yJqZSISuXZM");
+  assert.equal(url.searchParams.get("list"), null);
+  assert.equal(url.searchParams.get("enablejsapi"), null);
   assert.equal(url.searchParams.get("autoplay"), "1");
 });
 

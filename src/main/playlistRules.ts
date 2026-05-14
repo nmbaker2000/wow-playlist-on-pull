@@ -55,7 +55,7 @@ export function createManualPlaylistSelection(
 export function migratePlaylistRuleSettings(
   settings: StoredPlaylistRuleSettings
 ): PlaylistRuleSettings {
-  const providerId = normalizeStoredProviderId(settings.providerId ?? settings.selection?.providerId);
+  const providerId = inferStoredProviderId(settings.selection, settings.providerId);
   const playlistUrlOrId = settings.playlistUrlOrId ?? settings.selection?.playlistUrlOrId ?? "";
   const selection = normalizePlaylistSelection(
     settings.selection ?? createManualPlaylistSelection(providerId, playlistUrlOrId),
@@ -90,7 +90,7 @@ export function normalizePlaylistSelection(
   fallbackProviderId: StoredPlaylistProviderId = "youtube",
   fallbackPlaylistUrlOrId = ""
 ): PlaylistSelection {
-  const providerId = normalizeStoredProviderId(selection.providerId ?? fallbackProviderId);
+  const providerId = inferStoredProviderId(selection, fallbackProviderId);
   const playlistUrlOrId = (selection.playlistUrlOrId ?? fallbackPlaylistUrlOrId).trim();
   const source = selection.source ?? (selection.playlistId ? "account" : "manual");
   const normalized: PlaylistSelection = {
@@ -127,6 +127,17 @@ function normalizeStoredProviderId(providerId: StoredPlaylistProviderId | undefi
   }
 
   return "youtube";
+}
+
+function inferStoredProviderId(
+  selection: StoredPlaylistSelection | undefined,
+  fallbackProviderId: StoredPlaylistProviderId | undefined
+): PlaylistProviderId {
+  if (selection?.providerId === "local" || selection?.source === "local" || selection?.localMedia) {
+    return "local";
+  }
+
+  return normalizeStoredProviderId(selection?.providerId ?? fallbackProviderId);
 }
 
 export function selectPlaylistRule(
