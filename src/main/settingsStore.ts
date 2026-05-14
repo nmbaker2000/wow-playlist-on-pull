@@ -25,6 +25,7 @@ export interface AppSettings {
   playlistRules: PlaylistRule[];
   seenEncounters: EncounterInfo[];
   preloadEnabled: boolean;
+  localMediaVolume: number;
 }
 
 export function createDefaultSettings(): AppSettings {
@@ -40,7 +41,8 @@ export function createDefaultSettings(): AppSettings {
     },
     playlistRules: [],
     seenEncounters: [],
-    preloadEnabled: true
+    preloadEnabled: true,
+    localMediaVolume: 1
   };
 }
 
@@ -57,7 +59,8 @@ export async function loadSettings(): Promise<AppSettings> {
       defaultPlaylist: migratePlaylistRuleSettings(raw.defaultPlaylist ?? defaults.defaultPlaylist),
       playlistRules: (raw.playlistRules ?? []).map((rule) => migratePlaylistRule(rule)),
       seenEncounters: Array.isArray(raw.seenEncounters) ? raw.seenEncounters : [],
-      preloadEnabled: typeof raw.preloadEnabled === "boolean" ? raw.preloadEnabled : true
+      preloadEnabled: typeof raw.preloadEnabled === "boolean" ? raw.preloadEnabled : true,
+      localMediaVolume: normalizeVolume(raw.localMediaVolume)
     };
   } catch {
     return defaults;
@@ -104,4 +107,12 @@ async function writeEncryptedValue(fileName: string, value: string, label: strin
 
 function getEncryptedPath(fileName: string): string {
   return path.join(app.getPath("userData"), fileName);
+}
+
+function normalizeVolume(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(1, Math.max(0, value));
 }

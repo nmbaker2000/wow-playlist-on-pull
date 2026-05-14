@@ -136,6 +136,54 @@ test("migration preserves local media selections", () => {
   );
 });
 
+test("migration infers local media selections from selection source", () => {
+  assert.deepEqual(
+    migratePlaylistRuleSettings({
+      providerId: "youtube",
+      playlistUrlOrId: "C:\\Music\\ignored.mp3",
+      selection: {
+        playlistUrlOrId: "C:\\Music\\ignored.mp3",
+        source: "local",
+        shuffleEnabled: true,
+        localMedia: {
+          filePaths: ["C:\\Music\\one.mp3"],
+          folderPaths: []
+        }
+      }
+    }),
+    {
+      providerId: "local",
+      playlistUrlOrId: "",
+      selection: {
+        providerId: "local",
+        playlistUrlOrId: "",
+        source: "local",
+        shuffleEnabled: true,
+        localMedia: {
+          filePaths: ["C:\\Music\\one.mp3"],
+          folderPaths: []
+        }
+      }
+    }
+  );
+});
+
+test("migration infers local media selections from local media payload", () => {
+  assert.equal(
+    migratePlaylistRuleSettings({
+      selection: {
+        playlistUrlOrId: "",
+        shuffleEnabled: false,
+        localMedia: {
+          filePaths: [],
+          folderPaths: ["C:\\Music\\Raid"]
+        }
+      }
+    }).providerId,
+    "local"
+  );
+});
+
 test("migration maps unknown legacy providers to YouTube", () => {
   assert.deepEqual(
     migratePlaylistRuleSettings({
