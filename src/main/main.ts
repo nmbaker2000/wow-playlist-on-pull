@@ -218,12 +218,13 @@ ipcMain.handle(
   "app:save-settings",
   async (
     _event,
-    nextSettings: Pick<AppSettings, "defaultPlaylist" | "playlistRules" | "preloadEnabled">
+    nextSettings: Pick<AppSettings, "defaultPlaylist" | "playlistRules" | "preloadEnabled" | "localMediaVolume">
   ) => {
     validatePlaylistSettings(nextSettings.defaultPlaylist, nextSettings.playlistRules);
     settings.defaultPlaylist = normalizePlaylistSettings(nextSettings.defaultPlaylist);
     settings.playlistRules = nextSettings.playlistRules.map(normalizePlaylistRule);
     settings.preloadEnabled = nextSettings.preloadEnabled;
+    settings.localMediaVolume = normalizeLocalMediaVolume(nextSettings.localMediaVolume);
     await persistSettings();
     return settings;
   }
@@ -407,7 +408,7 @@ async function preloadConfiguredPlaylist(): Promise<void> {
       sendActivity("Preloading local media");
       window.webContents.setAudioMuted(true);
       window.hide();
-      await loadLocalPlayer(window, tracks, selection.shuffleEnabled, true);
+      await loadLocalPlayer(window, tracks, selection.shuffleEnabled, true, settings.localMediaVolume);
       playerStatus = "ready";
       sendActivity("Local media ready");
     } catch (error) {
@@ -495,7 +496,7 @@ async function playConfiguredPlaylist(pullEvent?: PullEvent): Promise<void> {
     currentPlaybackUrl = playbackUrl;
     playerStatus = "playing";
     window.webContents.setAudioMuted(false);
-    await loadLocalPlayer(window, tracks, selection.shuffleEnabled, false);
+    await loadLocalPlayer(window, tracks, selection.shuffleEnabled, false, settings.localMediaVolume);
     showPlayerWindow(window);
     sendActivity(selection.shuffleEnabled ? "Local media started with shuffle" : "Local media started");
     return;
@@ -712,7 +713,8 @@ async function loadLocalPlayer(
   window: BrowserWindow,
   tracks: LocalMediaTrack[],
   shuffleEnabled: boolean,
-  preloadOnly: boolean
+  preloadOnly: boolean,
+  volume: number
 ): Promise<void> {
   await withTimeout(
     window.loadFile(localPlayerPath),
@@ -723,7 +725,8 @@ async function loadLocalPlayer(
     `window.localMediaPlayer.loadQueue(${JSON.stringify({
       tracks,
       shuffleEnabled,
-      preloadOnly
+      preloadOnly,
+      volume: normalizeLocalMediaVolume(volume)
     })});`
   );
 }
@@ -759,6 +762,14 @@ async function waitForProviderPrivacy(providerId: PlaylistProviderId): Promise<v
   }
 }
 
+function normalizeLocalMediaVolume(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
 function buildPlaybackUrl(pullEvent?: PullEvent): string {
   const rule = selectPlaylistRule(getPlaylistRules(), pullEvent ?? {});
   const provider = getPlaylistProvider(rule.providerId);
@@ -786,19 +797,25 @@ function validatePlaylistSettings(
   defaultPlaylist: PlaylistRuleSettings,
   playlistRules: PlaylistRule[]
 ): void {
-  validatePlaylistInput(defaultPlaylist);
+  validatePlaylistInput(defaultPlaylist, "Default playlist");
 
   for (const rule of playlistRules) {
-    validatePlaylistInput(rule);
+    validatePlaylistInput(rule, `Boss cue "${rule.label || rule.encounterName || rule.encounterId || "unnamed"}"`);
     if (!rule.encounterId?.trim() && !rule.encounterName?.trim()) {
       throw new Error("Each encounter playlist needs an encounter ID or name.");
     }
   }
 }
 
-function validatePlaylistInput(settings: PlaylistRuleSettings): void {
+function validatePlaylistInput(settings: PlaylistRuleSettings, context: string): void {
   const normalized = migratePlaylistRuleSettings(settings);
-  getPlaylistProvider(normalized.providerId).buildPlaybackUrl(normalized.selection);
+  try {
+    getPlaylistProvider(normalized.providerId).buildPlaybackUrl(normalized.selection);
+  } catch (error) {
+    const provider = getPlaylistProvider(normalized.providerId);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${context} (${provider.label}): ${message}`);
+  }
 }
 
 function normalizePlaylistSettings(settings: PlaylistRuleSettings): PlaylistRuleSettings {
