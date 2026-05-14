@@ -121,6 +121,8 @@ const defaultProviderSelect = document.querySelector<HTMLSelectElement>("#defaul
 const defaultPlaylistPicker = document.querySelector<HTMLSelectElement>("#defaultPlaylistPicker");
 const defaultShuffleInput = document.querySelector<HTMLInputElement>("#defaultShuffle");
 const defaultLocalMedia = document.querySelector<HTMLElement>("#defaultLocalMedia");
+const localMediaVolumeInput = document.querySelector<HTMLInputElement>("#localMediaVolume");
+const localMediaVolumeValue = document.querySelector<HTMLOutputElement>("#localMediaVolumeValue");
 const preloadEnabledInput = document.querySelector<HTMLInputElement>("#preloadEnabled");
 const settingsPreloadEnabledInput = document.querySelector<HTMLInputElement>("#settingsPreloadEnabled");
 const statusText = document.querySelector<HTMLElement>("#statusText");
@@ -297,6 +299,7 @@ async function bootstrap(): Promise<void> {
   setProviderOptions(defaultProviderSelect, providers);
   setLogPath(state.settings.logPath);
   setProviderCredentials(state.settings);
+  setLocalMediaVolume(state.settings.localMediaVolume);
   setDefaultPlaylist(state.settings.defaultPlaylist);
   void refreshConnectedPlaylistLibraries(state.providerAccounts);
   setPreloadEnabled(state.settings.preloadEnabled);
@@ -596,7 +599,8 @@ async function saveSettings(): Promise<void> {
   await window.wowPullPlaylist.saveSettings({
     defaultPlaylist,
     playlistRules,
-    preloadEnabled: getPreloadEnabled()
+    preloadEnabled: getPreloadEnabled(),
+    localMediaVolume: getLocalMediaVolume()
   });
   updateSettingsSummary();
 }
@@ -1332,6 +1336,41 @@ function setPreloadEnabled(preloadEnabled: boolean): void {
 
 function getPreloadEnabled(): boolean {
   return settingsPreloadEnabledInput?.checked ?? preloadEnabledInput?.checked ?? true;
+}
+
+function setLocalMediaVolume(volume: number): void {
+  if (!localMediaVolumeInput) {
+    return;
+  }
+
+  localMediaVolumeInput.value = String(Math.round(normalizeVolume(volume) * 100));
+  updateLocalMediaVolumeValue();
+  localMediaVolumeInput.addEventListener("input", () => {
+    updateLocalMediaVolumeValue();
+    updateSettingsSummary();
+  });
+}
+
+function getLocalMediaVolume(): number {
+  if (!localMediaVolumeInput) {
+    return 1;
+  }
+
+  return normalizeVolume(Number(localMediaVolumeInput.value) / 100);
+}
+
+function updateLocalMediaVolumeValue(): void {
+  if (localMediaVolumeValue) {
+    localMediaVolumeValue.value = `${Math.round(getLocalMediaVolume() * 100)}%`;
+  }
+}
+
+function normalizeVolume(volume: number): number {
+  if (!Number.isFinite(volume)) {
+    return 1;
+  }
+
+  return Math.min(1, Math.max(0, volume));
 }
 
 function setWatching(nextIsWatching: boolean): void {

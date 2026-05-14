@@ -8,6 +8,7 @@ interface LocalPlayerQueueInput {
   tracks: LocalMediaTrack[];
   shuffleEnabled: boolean;
   preloadOnly: boolean;
+  volume: number;
 }
 
 const audio = document.querySelector<HTMLAudioElement>("#audio");
@@ -23,6 +24,7 @@ let currentIndex = 0;
 let currentShuffleEnabled = false;
 
 function loadQueue(input: LocalPlayerQueueInput): void {
+  setVolume(input.volume);
   currentShuffleEnabled = input.shuffleEnabled;
   queue = input.shuffleEnabled ? shuffleTracks(input.tracks) : [...input.tracks];
   currentIndex = 0;
@@ -80,6 +82,14 @@ function playNextTrack(): void {
   currentIndex += 1;
   loadCurrentTrack();
   void audio?.play();
+}
+
+function setVolume(volume: number): void {
+  if (!audio || !Number.isFinite(volume)) {
+    return;
+  }
+
+  audio.volume = Math.min(1, Math.max(0, volume));
 }
 
 function shuffleTracks(tracks: LocalMediaTrack[]): LocalMediaTrack[] {

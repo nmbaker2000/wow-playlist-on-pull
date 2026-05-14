@@ -19,17 +19,19 @@ export class YouTubePlaylistProvider implements PlaylistProvider {
       input.source === "account" && input.playlistId
         ? { playlistId: validateYouTubePlaylistId(input.playlistId), videoId: null }
         : parseYouTubePlaylistInput(input.playlistUrlOrId);
-    const url = playlist.videoId && !input.shuffleEnabled
+    const url = playlist.videoId && (!playlist.playlistId || !input.shuffleEnabled)
       ? new URL("https://www.youtube.com/watch")
       : new URL("https://www.youtube.com/playlist");
 
-    if (playlist.videoId && !input.shuffleEnabled) {
+    if (playlist.videoId && (!playlist.playlistId || !input.shuffleEnabled)) {
       url.searchParams.set("v", playlist.videoId);
     }
 
-    url.searchParams.set("list", playlist.playlistId);
+    if (playlist.playlistId) {
+      url.searchParams.set("list", playlist.playlistId);
+    }
     url.searchParams.set("autoplay", "1");
-    if (input.shuffleEnabled) {
+    if (playlist.playlistId && input.shuffleEnabled) {
       url.searchParams.set("enablejsapi", "1");
     }
     return url.toString();
@@ -45,11 +47,16 @@ export class YouTubePlaylistProvider implements PlaylistProvider {
 }
 
 export function extractYouTubePlaylistId(value: string): string {
-  return parseYouTubePlaylistInput(value).playlistId;
+  const playlistId = parseYouTubePlaylistInput(value).playlistId;
+  if (!playlistId) {
+    throw new Error("Enter a valid YouTube playlist URL or playlist ID.");
+  }
+
+  return playlistId;
 }
 
 export interface YouTubePlaylistParts {
-  playlistId: string;
+  playlistId: string | null;
   videoId: string | null;
 }
 
@@ -69,10 +76,18 @@ export function parseYouTubePlaylistInput(value: string): YouTubePlaylistParts {
       };
     }
 
-    throw new Error("A YouTube playlist URL must include a list parameter.");
+    const videoId = validateOptionalYouTubeVideoId(extractYouTubeVideoId(url));
+    if (videoId) {
+      return {
+        playlistId: null,
+        videoId
+      };
+    }
+
+    throw new Error("Enter a valid YouTube playlist or video URL.");
   } catch {
     if (/^https?:\/\//i.test(trimmed)) {
-      throw new Error("A YouTube playlist URL must include a list parameter.");
+      throw new Error("Enter a valid YouTube playlist or video URL.");
     }
   }
 
