@@ -5,6 +5,7 @@
   "main": "dist/main/main.js",
   "scripts": {
     "build": "tsc && node scripts/copy-renderer-assets.mjs",
+    "dist:win": "npm run build && electron-builder --config electron-builder.config.cjs --win nsis --x64",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
     "typecheck": "tsc --noEmit",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^20.12.12",
     "electron": "^39.8.8",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.4.5"
   },
   "dependencies": {

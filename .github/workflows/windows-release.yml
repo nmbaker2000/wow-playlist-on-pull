@@ -1,0 +1,88 @@
+name: Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    env:
+      WINDOWS_CERTIFICATE_CONFIGURED: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' && 'true' || 'false' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Decode Windows signing certificate
+        if: ${{ env.WINDOWS_CERTIFICATE_CONFIGURED == 'true' }}
+        shell: pwsh
+        run: |
+          $certificatePath = Join-Path $env:RUNNER_TEMP "windows-codesign.pfx"
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}"))
+          "CSC_LINK=$certificatePath" >> $env:GITHUB_ENV
+          "CSC_KEY_PASSWORD=${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}" >> $env:GITHUB_ENV
+
+      - name: Disable signing when no certificate is configured
+        if: ${{ env.WINDOWS_CERTIFICATE_CONFIGURED != 'true' }}
+        shell: pwsh
+        run: '"CSC_IDENTITY_AUTO_DISCOVERY=false" >> $env:GITHUB_ENV'
+
+      - name: Build Windows installer
+        run: npm run dist:win
+
+      - name: Generate SHA-256 checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path release -Include *.exe,*.blockmap,latest.yml -File -Recurse |
+            Sort-Object FullName |
+            ForEach-Object {
+              $hash = Get-FileHash -Algorithm SHA256 $_.FullName
+              "$($hash.Hash.ToLowerInvariant())  $($_.Name)"
+            } |
+            Set-Content -Encoding ascii release\SHA256SUMS.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub release assets
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $files = Get-ChildItem -Path release -Include *.exe,*.blockmap,latest.yml,SHA256SUMS.txt -File -Recurse | ForEach-Object { $_.FullName }
+          if (-not (gh release view $tag 2>$null)) {
+            gh release create $tag --title $tag --notes "Windows installer build for $tag."
+          }
+          gh release upload $tag $files --clobber
