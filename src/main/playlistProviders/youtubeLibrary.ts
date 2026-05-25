@@ -1,4 +1,4 @@
-import { app, BrowserWindow, safeStorage } from "electron";
+import { app, BrowserWindow, safeStorage, shell } from "electron";
 import { createServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -243,9 +243,12 @@ async function runInstalledAppOAuthFlow(
     backgroundColor: "#0f0f0f",
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     }
   });
+
+  attachOAuthWindowPrivacy(authWindow, redirectUri);
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -296,6 +299,69 @@ async function runInstalledAppOAuthFlow(
       settle(() => reject(error));
     });
   });
+}
+
+function attachOAuthWindowPrivacy(authWindow: BrowserWindow, redirectUri: string): void {
+  authWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalHttpsUrl(url);
+    return { action: "deny" };
+  });
+
+  authWindow.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+
+  authWindow.webContents.session.on("will-download", (event) => {
+    event.preventDefault();
+  });
+
+  authWindow.webContents.on("will-navigate", (event, url) => {
+    if (isAllowedOAuthUrl(url, redirectUri)) {
+      return;
+    }
+
+    event.preventDefault();
+    openExternalHttpsUrl(url);
+  });
+}
+
+function openExternalHttpsUrl(value: string): void {
+  try {
+    const url = new URL(value);
+    if (url.protocol === "https:") {
+      void shell.openExternal(url.toString());
+    }
+  } catch {
+    // Ignore malformed navigation attempts.
+  }
+}
+
+function isAllowedOAuthUrl(value: string, redirectUri: string): boolean {
+  try {
+    const url = new URL(value);
+    const callbackUrl = new URL(redirectUri);
+    if (url.origin === callbackUrl.origin && url.pathname === callbackUrl.pathname) {
+      return true;
+    }
+
+    if (url.protocol !== "https:" && url.protocol !== "about:") {
+      return false;
+    }
+
+    return (
+      url.protocol === "about:" ||
+      isHostOrSubdomain(url.hostname, "accounts.google.com") ||
+      isHostOrSubdomain(url.hostname, "google.com") ||
+      isHostOrSubdomain(url.hostname, "gstatic.com") ||
+      isHostOrSubdomain(url.hostname, "googleusercontent.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isHostOrSubdomain(hostname: string, rootDomain: string): boolean {
+  return hostname === rootDomain || hostname.endsWith(`.${rootDomain}`);
 }
 
 async function exchangeAuthorizationCode(
