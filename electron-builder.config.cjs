@@ -10,6 +10,7 @@ module.exports = {
   files: [
     "dist/**/*",
     "build/icon.png",
+    "build/icon.ico",
     "package.json"
   ],
   win: {
