@@ -97,9 +97,13 @@ let settings: AppSettings = createDefaultSettings();
 
 const rendererPath = path.join(__dirname, "..", "renderer", "index.html");
 const localPlayerPath = path.join(__dirname, "..", "renderer", "localPlayer.html");
-const appIconPath = path.join(__dirname, "..", "..", "build", "icon.png");
+const appId = "com.wowpullplaylist.app";
+const appIconPath = path.join(__dirname, "..", "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+if (process.platform === "win32") {
+  app.setAppUserModelId(appId);
+}
 
 app.whenReady().then(async () => {
   settings = await loadSettings();
