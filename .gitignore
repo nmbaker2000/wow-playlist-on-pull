@@ -1,5 +1,7 @@
 node_modules/
 dist/
+release/
 npm-debug.log*
 *.log
 .DS_Store
+.codex-security-scans/

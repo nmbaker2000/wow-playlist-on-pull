@@ -135,7 +135,8 @@ function createMainWindow(): void {
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     }
   });
 
@@ -573,7 +574,8 @@ function ensurePlayerWindow(options: { show: boolean; providerId: PlaylistProvid
     webPreferences: {
       partition: options.providerId === "youtube" ? YOUTUBE_SESSION_PARTITION : undefined,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     }
   });
 
@@ -605,7 +607,8 @@ function openYouTubeLoginWindow(): BrowserWindow {
     webPreferences: {
       partition: YOUTUBE_SESSION_PARTITION,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     }
   });
 
