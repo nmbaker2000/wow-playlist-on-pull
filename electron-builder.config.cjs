@@ -9,9 +9,11 @@ module.exports = {
   },
   files: [
     "dist/**/*",
+    "build/icon.png",
     "package.json"
   ],
   win: {
+    icon: "build/icon.ico",
     target: [
       {
         target: "nsis",
