@@ -29,9 +29,13 @@ The workflow at `.github/workflows/windows-release.yml` runs when:
 - you manually start it from the GitHub Actions tab
 - you push a tag like `v0.1.0`
 
-Every run uploads a `windows-installer` artifact. Tag builds also publish the installer files to the GitHub Release for that tag.
+Every run uploads a `windows-installer` artifact containing only the setup `.exe` and `SHA256SUMS.txt`. Tag builds also publish those two files to the GitHub Release for that tag.
 
-The workflow also creates `SHA256SUMS.txt` so players can verify downloaded artifacts.
+Manual runs are build-only by default. To publish a Release manually, set `publish_release` to `true` and provide a `release_tag` such as `v0.1.0`.
+
+For tag builds and manual publish builds, the workflow updates the package version in CI from the release tag before packaging. For example, tag `v1.0.0` produces a setup installer with version `1.0.0`.
+
+The workflow creates `SHA256SUMS.txt` so players can verify the downloaded setup installer.
 
 ## Unsigned Builds
 
