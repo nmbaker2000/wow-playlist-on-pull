@@ -97,6 +97,7 @@ let settings: AppSettings = createDefaultSettings();
 
 const rendererPath = path.join(__dirname, "..", "renderer", "index.html");
 const localPlayerPath = path.join(__dirname, "..", "renderer", "localPlayer.html");
+const appIconPath = path.join(__dirname, "..", "..", "build", "icon.png");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
@@ -131,6 +132,7 @@ function createMainWindow(): void {
     minWidth: 920,
     minHeight: 620,
     title: "WoW Pull Playlist",
+    icon: appIconPath,
     backgroundColor: settings.theme === "light" ? "#f6f2ea" : "#101820",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -570,6 +572,7 @@ function ensurePlayerWindow(options: { show: boolean; providerId: PlaylistProvid
     height: 720,
     show: options.show,
     title: "Pull Playlist Player",
+    icon: appIconPath,
     backgroundColor: "#000000",
     webPreferences: {
       partition: options.providerId === "youtube" ? YOUTUBE_SESSION_PARTITION : undefined,
@@ -603,6 +606,7 @@ function openYouTubeLoginWindow(): BrowserWindow {
     height: 760,
     show: true,
     title: "YouTube Sign In",
+    icon: appIconPath,
     backgroundColor: "#0f0f0f",
     webPreferences: {
       partition: YOUTUBE_SESSION_PARTITION,
