@@ -5,7 +5,7 @@
   "main": "dist/main/main.js",
   "scripts": {
     "build": "tsc && node scripts/copy-renderer-assets.mjs",
-    "dist:win": "npm run build && electron-builder --config electron-builder.config.cjs --win nsis --x64",
+    "dist:win": "npm run build && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
     "typecheck": "tsc --noEmit",
