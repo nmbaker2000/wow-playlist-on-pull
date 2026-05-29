@@ -431,6 +431,28 @@ button:focus-visible {
   gap: 10px;
 }
 
+.volume-control {
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-subtle);
+}
+
+.volume-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  align-items: center;
+  gap: 12px;
+}
+
+.volume-row output {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-align: right;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

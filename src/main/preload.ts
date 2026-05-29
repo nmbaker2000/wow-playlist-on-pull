@@ -23,7 +23,7 @@ export interface RendererState {
     playlistRules: PlaylistRule[];
     seenEncounters: RendererEncounterInfo[];
     preloadEnabled: boolean;
-    localMediaVolume: number;
+    playbackVolume: number;
   };
   providers: Array<{ id: PlaylistProviderId; label: string }>;
   providerAccounts: RendererProviderAccount[];
@@ -73,8 +73,8 @@ const api = {
     defaultPlaylist: PlaylistRuleSettings;
     playlistRules: PlaylistRule[];
     preloadEnabled: boolean;
-    localMediaVolume: number;
   }): Promise<RendererState["settings"]> => ipcRenderer.invoke("app:save-settings", settings),
+  setPlaybackVolume: (volume: number): Promise<number> => ipcRenderer.invoke("app:set-playback-volume", volume),
   setTheme: (theme: RendererState["settings"]["theme"]): Promise<RendererState["settings"]["theme"]> =>
     ipcRenderer.invoke("app:set-theme", theme),
   saveOAuthCredentials: (credentials: {

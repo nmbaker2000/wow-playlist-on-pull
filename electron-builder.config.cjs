@@ -15,6 +15,7 @@ module.exports = {
   ],
   win: {
     icon: "build/icon.ico",
+    executableName: "WoW Pull Playlist",
     target: [
       {
         target: "nsis",

@@ -121,8 +121,8 @@ const defaultProviderSelect = document.querySelector<HTMLSelectElement>("#defaul
 const defaultPlaylistPicker = document.querySelector<HTMLSelectElement>("#defaultPlaylistPicker");
 const defaultShuffleInput = document.querySelector<HTMLInputElement>("#defaultShuffle");
 const defaultLocalMedia = document.querySelector<HTMLElement>("#defaultLocalMedia");
-const localMediaVolumeInput = document.querySelector<HTMLInputElement>("#localMediaVolume");
-const localMediaVolumeValue = document.querySelector<HTMLOutputElement>("#localMediaVolumeValue");
+const playbackVolumeInput = document.querySelector<HTMLInputElement>("#playbackVolume");
+const playbackVolumeValue = document.querySelector<HTMLOutputElement>("#playbackVolumeValue");
 const preloadEnabledInput = document.querySelector<HTMLInputElement>("#preloadEnabled");
 const settingsPreloadEnabledInput = document.querySelector<HTMLInputElement>("#settingsPreloadEnabled");
 const statusText = document.querySelector<HTMLElement>("#statusText");
@@ -299,7 +299,7 @@ async function bootstrap(): Promise<void> {
   setProviderOptions(defaultProviderSelect, providers);
   setLogPath(state.settings.logPath);
   setProviderCredentials(state.settings);
-  setLocalMediaVolume(state.settings.localMediaVolume);
+  setPlaybackVolume(state.settings.playbackVolume);
   setDefaultPlaylist(state.settings.defaultPlaylist);
   void refreshConnectedPlaylistLibraries(state.providerAccounts);
   setPreloadEnabled(state.settings.preloadEnabled);
@@ -599,8 +599,7 @@ async function saveSettings(): Promise<void> {
   await window.wowPullPlaylist.saveSettings({
     defaultPlaylist,
     playlistRules,
-    preloadEnabled: getPreloadEnabled(),
-    localMediaVolume: getLocalMediaVolume()
+    preloadEnabled: getPreloadEnabled()
   });
   updateSettingsSummary();
 }
@@ -1338,30 +1337,34 @@ function getPreloadEnabled(): boolean {
   return settingsPreloadEnabledInput?.checked ?? preloadEnabledInput?.checked ?? true;
 }
 
-function setLocalMediaVolume(volume: number): void {
-  if (!localMediaVolumeInput) {
+function setPlaybackVolume(volume: number): void {
+  if (!playbackVolumeInput) {
     return;
   }
 
-  localMediaVolumeInput.value = String(Math.round(normalizeVolume(volume) * 100));
-  updateLocalMediaVolumeValue();
-  localMediaVolumeInput.addEventListener("input", () => {
-    updateLocalMediaVolumeValue();
+  playbackVolumeInput.value = String(Math.round(normalizeVolume(volume) * 100));
+  updatePlaybackVolumeValue();
+  playbackVolumeInput.addEventListener("input", () => {
+    const nextVolume = getPlaybackVolume();
+    updatePlaybackVolumeValue();
     updateSettingsSummary();
+    void window.wowPullPlaylist.setPlaybackVolume(nextVolume).catch((error) => {
+      setStatus(error instanceof Error ? error.message : String(error));
+    });
   });
 }
 
-function getLocalMediaVolume(): number {
-  if (!localMediaVolumeInput) {
+function getPlaybackVolume(): number {
+  if (!playbackVolumeInput) {
     return 1;
   }
 
-  return normalizeVolume(Number(localMediaVolumeInput.value) / 100);
+  return normalizeVolume(Number(playbackVolumeInput.value) / 100);
 }
 
-function updateLocalMediaVolumeValue(): void {
-  if (localMediaVolumeValue) {
-    localMediaVolumeValue.value = `${Math.round(getLocalMediaVolume() * 100)}%`;
+function updatePlaybackVolumeValue(): void {
+  if (playbackVolumeValue) {
+    playbackVolumeValue.value = `${Math.round(getPlaybackVolume() * 100)}%`;
   }
 }
 

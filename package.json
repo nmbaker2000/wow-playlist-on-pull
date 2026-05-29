@@ -1,15 +1,24 @@
 {
   "name": "wow-pull-playlist",
+  "productName": "WoW Pull Playlist",
   "version": "0.1.0",
   "description": "Desktop app that starts a playlist when a World of Warcraft combat pull begins.",
   "main": "dist/main/main.js",
+  "homepage": "https://github.com/nmbaker2000/wow-playlist-on-pull#readme",
+  "bugs": {
+    "url": "https://github.com/nmbaker2000/wow-playlist-on-pull/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nmbaker2000/wow-playlist-on-pull.git"
+  },
   "scripts": {
     "build": "tsc && node scripts/copy-renderer-assets.mjs",
     "dist:win": "npm run build && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/main/pullDetector.test.js dist/main/combatLogTailer.test.js dist/main/playlistProviders/youtubeProvider.test.js dist/main/playlistProviders/localMediaProvider.test.js dist/main/playlistProviders/index.test.js dist/main/localMediaResolver.test.js dist/main/combatLogDiscovery/windowsCombatLogDiscovery.test.js dist/main/playerLifecycle.test.js dist/main/playlistRules.test.js dist/main/youtubeSessionPrivacy.test.js",
+    "test": "npm run build && node --test dist/main/pullDetector.test.js dist/main/combatLogTailer.test.js dist/main/playlistProviders/youtubeProvider.test.js dist/main/playlistProviders/localMediaProvider.test.js dist/main/playlistProviders/index.test.js dist/main/localMediaResolver.test.js dist/main/combatLogDiscovery/windowsCombatLogDiscovery.test.js dist/main/playerLifecycle.test.js dist/main/playlistRules.test.js dist/main/settingsStore.test.js dist/main/playerVolume.test.js dist/main/appIdentity.test.js dist/main/youtubeSessionPrivacy.test.js",
     "smoke:youtube": "npm run build && electron scripts/smoke-youtube-playback.cjs"
   },
   "keywords": [
@@ -18,7 +27,7 @@
     "electron",
     "youtube"
   ],
-  "author": "",
+  "author": "nmbaker2000",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.12.12",
