@@ -131,10 +131,12 @@ type LocalPlayerWindow = Window & {
   localMediaPlayer: {
     loadQueue(input: LocalPlayerQueueInput): void;
     playFromStart(): void;
+    setVolume(volume: number): void;
   };
 };
 
 (window as unknown as LocalPlayerWindow).localMediaPlayer = {
   loadQueue,
-  playFromStart
+  playFromStart,
+  setVolume
 };
