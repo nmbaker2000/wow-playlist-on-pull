@@ -76,6 +76,14 @@
               <span>Prime playlist before pull</span>
             </label>
 
+            <label class="volume-control">
+              <span>Playback volume</span>
+              <div class="volume-row">
+                <input id="playbackVolume" type="range" min="0" max="100" step="1" />
+                <output id="playbackVolumeValue" for="playbackVolume">100%</output>
+              </div>
+            </label>
+
             <div class="actions">
               <button id="start" type="button" class="primary">Arm Pull Watch</button>
               <button id="stop" type="button">Stand down</button>
@@ -198,11 +206,6 @@
                       <div class="help-panel">
                         <p>Choose audio files or music folders from this computer. Playback uses Electron local file playback, and folder sources are scanned recursively when a playlist starts.</p>
                       </div>
-                      <label class="range-field">
-                        <span>Playback volume</span>
-                        <input id="localMediaVolume" type="range" min="0" max="100" step="1" />
-                        <output id="localMediaVolumeValue" for="localMediaVolume">100%</output>
-                      </label>
                     </section>
                   </div>
                 </section>

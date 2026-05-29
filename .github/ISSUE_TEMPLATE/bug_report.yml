@@ -1,0 +1,81 @@
+name: Bug report
+description: Report something that is broken or confusing.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please include enough detail to reproduce it.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Use the release version, installer filename, or commit SHA.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      options:
+        - GitHub Release installer
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 23H2"
+    validations:
+      required: true
+  - type: input
+    id: wow-client
+    attributes:
+      label: WoW client
+      placeholder: "Retail, Classic, Classic Era, PTR"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Playlist provider
+      options:
+        - YouTube
+        - Local media
+        - Both
+        - Not related to playback
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact actions that trigger the problem.
+      placeholder: |
+        1. Enable /combatlog in WoW.
+        2. Select ...
+        3. Arm watcher ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Do not include OAuth secrets, cookies, private combat logs, or other sensitive data.
+      render: text

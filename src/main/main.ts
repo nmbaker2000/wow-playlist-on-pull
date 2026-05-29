@@ -15,6 +15,8 @@ import {
   selectPlaylistRule
 } from "./playlistRules";
 import { PullDetector, PullEvent } from "./pullDetector";
+import { applyPlaybackVolumeToWebContents, normalizePlaybackVolume } from "./playerVolume";
+import { appId, appName } from "./appIdentity";
 import {
   getPlaylistProvider,
   listPlaylistProviderAccountActions,
@@ -97,10 +99,10 @@ let settings: AppSettings = createDefaultSettings();
 
 const rendererPath = path.join(__dirname, "..", "renderer", "index.html");
 const localPlayerPath = path.join(__dirname, "..", "renderer", "localPlayer.html");
-const appId = "com.wowpullplaylist.app";
 const appIconPath = path.join(__dirname, "..", "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png");
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+app.setName(appName);
 if (process.platform === "win32") {
   app.setAppUserModelId(appId);
 }
@@ -135,7 +137,7 @@ function createMainWindow(): void {
     height: 700,
     minWidth: 920,
     minHeight: 620,
-    title: "WoW Pull Playlist",
+    title: appName,
     icon: appIconPath,
     backgroundColor: settings.theme === "light" ? "#f6f2ea" : "#101820",
     webPreferences: {
@@ -225,17 +227,23 @@ ipcMain.handle(
   "app:save-settings",
   async (
     _event,
-    nextSettings: Pick<AppSettings, "defaultPlaylist" | "playlistRules" | "preloadEnabled" | "localMediaVolume">
+    nextSettings: Pick<AppSettings, "defaultPlaylist" | "playlistRules" | "preloadEnabled">
   ) => {
     validatePlaylistSettings(nextSettings.defaultPlaylist, nextSettings.playlistRules);
     settings.defaultPlaylist = normalizePlaylistSettings(nextSettings.defaultPlaylist);
     settings.playlistRules = nextSettings.playlistRules.map(normalizePlaylistRule);
     settings.preloadEnabled = nextSettings.preloadEnabled;
-    settings.localMediaVolume = normalizeLocalMediaVolume(nextSettings.localMediaVolume);
     await persistSettings();
     return settings;
   }
 );
+
+ipcMain.handle("app:set-playback-volume", async (_event, volume: number) => {
+  settings.playbackVolume = normalizePlaybackVolume(volume);
+  await persistSettings();
+  await applyPlaybackVolumeToPlayerWindow(settings.playbackVolume);
+  return settings.playbackVolume;
+});
 
 ipcMain.handle("app:set-theme", async (_event, theme: AppSettings["theme"]) => {
   if (theme !== "dark" && theme !== "light") {
@@ -415,7 +423,7 @@ async function preloadConfiguredPlaylist(): Promise<void> {
       sendActivity("Preloading local media");
       window.webContents.setAudioMuted(true);
       window.hide();
-      await loadLocalPlayer(window, tracks, selection.shuffleEnabled, true, settings.localMediaVolume);
+      await loadLocalPlayer(window, tracks, selection.shuffleEnabled, true, settings.playbackVolume);
       playerStatus = "ready";
       sendActivity("Local media ready");
     } catch (error) {
@@ -478,6 +486,7 @@ async function startConfiguredPlaylist(pullEvent: PullEvent): Promise<void> {
     const window = ensurePlayerWindow({ show: true, providerId: selection.providerId });
     playerStatus = "playing";
     window.webContents.setAudioMuted(false);
+    await applyPlaybackVolumeToPlayerWindow(settings.playbackVolume, window);
     showPlayerWindow(window);
     if (getPlaybackRoute(selection.providerId) === "local-media") {
       await playLocalPlayerWindow(window);
@@ -503,7 +512,7 @@ async function playConfiguredPlaylist(pullEvent?: PullEvent): Promise<void> {
     currentPlaybackUrl = playbackUrl;
     playerStatus = "playing";
     window.webContents.setAudioMuted(false);
-    await loadLocalPlayer(window, tracks, selection.shuffleEnabled, false, settings.localMediaVolume);
+    await loadLocalPlayer(window, tracks, selection.shuffleEnabled, false, settings.playbackVolume);
     showPlayerWindow(window);
     sendActivity(selection.shuffleEnabled ? "Local media started with shuffle" : "Local media started");
     return;
@@ -517,6 +526,7 @@ async function playConfiguredPlaylist(pullEvent?: PullEvent): Promise<void> {
   await startYouTubePlaylistPageIfNeeded(window, playbackUrl, selection.shuffleEnabled);
   await settlePlayerWindow();
   await setupShuffleIfEnabled(window, selection);
+  await applyPlaybackVolumeToPlayerWindow(settings.playbackVolume, window);
 
   showPlayerWindow(window);
   sendActivity("Playlist started");
@@ -737,9 +747,10 @@ async function loadLocalPlayer(
       tracks,
       shuffleEnabled,
       preloadOnly,
-      volume: normalizeLocalMediaVolume(volume)
+      volume: normalizePlaybackVolume(volume)
     })});`
   );
+  await applyPlaybackVolumeToPlayerWindow(volume, window);
 }
 
 async function playLocalPlayerWindow(window: BrowserWindow): Promise<void> {
@@ -771,14 +782,6 @@ async function waitForProviderPrivacy(providerId: PlaylistProviderId): Promise<v
   if (providerId === "youtube") {
     await waitForYouTubePrivacy();
   }
-}
-
-function normalizeLocalMediaVolume(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 1;
-  }
-
-  return Math.min(1, Math.max(0, value));
 }
 
 function buildPlaybackUrl(pullEvent?: PullEvent): string {
@@ -921,6 +924,17 @@ async function playPlayerWindow(window: BrowserWindow): Promise<void> {
       })();`
     )
     .catch(() => undefined);
+}
+
+async function applyPlaybackVolumeToPlayerWindow(
+  volume: number,
+  window = playerWindow
+): Promise<void> {
+  if (!window || window.isDestroyed()) {
+    return;
+  }
+
+  await applyPlaybackVolumeToWebContents(window.webContents, volume);
 }
 
 async function startYouTubePlaylistPageIfNeeded(
