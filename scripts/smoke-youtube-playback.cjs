@@ -5,7 +5,7 @@ const { YouTubePlaylistProvider } = require("../dist/main/playlistProviders/yout
 
 const playlistUrl =
   process.argv.find((argument) => !argument.startsWith("--") && argument !== process.argv[0] && argument !== process.argv[1]) ??
-  "https://www.youtube.com/watch?v=yJqZSISuXZM&list=PLStOwqei9lEwnucBQn6Ym3MtfF2w0ZB9I";
+  "https://www.youtube.com/watch?v=AEsf7QmIJTQ";
 const shuffleEnabled = process.argv.includes("--shuffle");
 const resultPath = join(__dirname, "..", "dist", "youtube-smoke-result.json");
 
