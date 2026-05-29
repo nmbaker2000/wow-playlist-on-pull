@@ -25,8 +25,15 @@ export interface AppSettings {
   playlistRules: PlaylistRule[];
   seenEncounters: EncounterInfo[];
   preloadEnabled: boolean;
-  localMediaVolume: number;
+  playbackVolume: number;
 }
+
+type RawAppSettings = Partial<Omit<AppSettings, "playbackVolume">> & {
+  playbackVolume?: unknown;
+  localMediaVolume?: unknown;
+};
+
+type SettingsJson = Omit<AppSettings, "youtubeOAuthClientId" | "youtubeOAuthClientSecret">;
 
 export function createDefaultSettings(): AppSettings {
   return {
@@ -42,38 +49,55 @@ export function createDefaultSettings(): AppSettings {
     playlistRules: [],
     seenEncounters: [],
     preloadEnabled: true,
-    localMediaVolume: 1
+    playbackVolume: 1
   };
 }
 
 export async function loadSettings(): Promise<AppSettings> {
-  const defaults = createDefaultSettings();
-
   try {
-    const raw = JSON.parse(await readFile(getSettingsPath(), "utf8")) as Partial<AppSettings>;
-    return {
-      logPath: typeof raw.logPath === "string" ? raw.logPath : null,
-      theme: raw.theme === "light" ? "light" : "dark",
-      youtubeOAuthClientId: (await readEncryptedValue("youtube-oauth-client-id.enc")) || (typeof raw.youtubeOAuthClientId === "string" ? raw.youtubeOAuthClientId : ""),
-      youtubeOAuthClientSecret: (await readEncryptedValue("youtube-oauth-client-secret.enc")) || "",
-      defaultPlaylist: migratePlaylistRuleSettings(raw.defaultPlaylist ?? defaults.defaultPlaylist),
-      playlistRules: (raw.playlistRules ?? []).map((rule) => migratePlaylistRule(rule)),
-      seenEncounters: Array.isArray(raw.seenEncounters) ? raw.seenEncounters : [],
-      preloadEnabled: typeof raw.preloadEnabled === "boolean" ? raw.preloadEnabled : true,
-      localMediaVolume: normalizeVolume(raw.localMediaVolume)
-    };
+    const raw = JSON.parse(await readFile(getSettingsPath(), "utf8")) as RawAppSettings;
+    return migrateRawSettings(raw, {
+      youtubeOAuthClientId: await readEncryptedValue("youtube-oauth-client-id.enc"),
+      youtubeOAuthClientSecret: await readEncryptedValue("youtube-oauth-client-secret.enc")
+    });
   } catch {
-    return defaults;
+    return createDefaultSettings();
   }
 }
 
 export async function saveSettingsToDisk(settings: AppSettings): Promise<void> {
   const settingsPath = getSettingsPath();
-  const { youtubeOAuthClientId, youtubeOAuthClientSecret, ...settingsJson } = settings;
-  await writeEncryptedValue("youtube-oauth-client-id.enc", youtubeOAuthClientId, "YouTube OAuth Client ID");
-  await writeEncryptedValue("youtube-oauth-client-secret.enc", youtubeOAuthClientSecret, "YouTube OAuth Client Secret");
+  await writeEncryptedValue("youtube-oauth-client-id.enc", settings.youtubeOAuthClientId, "YouTube OAuth Client ID");
+  await writeEncryptedValue("youtube-oauth-client-secret.enc", settings.youtubeOAuthClientSecret, "YouTube OAuth Client Secret");
   await mkdir(path.dirname(settingsPath), { recursive: true });
-  await writeFile(settingsPath, `${JSON.stringify(settingsJson, null, 2)}\n`, "utf8");
+  await writeFile(settingsPath, `${JSON.stringify(createSettingsJsonForDisk(settings), null, 2)}\n`, "utf8");
+}
+
+export function migrateRawSettings(
+  raw: RawAppSettings = {},
+  encryptedCredentials: { youtubeOAuthClientId?: string; youtubeOAuthClientSecret?: string } = {}
+): AppSettings {
+  const defaults = createDefaultSettings();
+  const volumeSource = raw.playbackVolume === undefined ? raw.localMediaVolume : raw.playbackVolume;
+
+  return {
+    logPath: typeof raw.logPath === "string" ? raw.logPath : null,
+    theme: raw.theme === "light" ? "light" : "dark",
+    youtubeOAuthClientId:
+      encryptedCredentials.youtubeOAuthClientId ||
+      (typeof raw.youtubeOAuthClientId === "string" ? raw.youtubeOAuthClientId : ""),
+    youtubeOAuthClientSecret: encryptedCredentials.youtubeOAuthClientSecret || "",
+    defaultPlaylist: migratePlaylistRuleSettings(raw.defaultPlaylist ?? defaults.defaultPlaylist),
+    playlistRules: (raw.playlistRules ?? []).map((rule) => migratePlaylistRule(rule)),
+    seenEncounters: Array.isArray(raw.seenEncounters) ? raw.seenEncounters : [],
+    preloadEnabled: typeof raw.preloadEnabled === "boolean" ? raw.preloadEnabled : true,
+    playbackVolume: normalizePlaybackVolume(volumeSource)
+  };
+}
+
+export function createSettingsJsonForDisk(settings: AppSettings): SettingsJson {
+  const { youtubeOAuthClientId, youtubeOAuthClientSecret, ...settingsJson } = settings;
+  return settingsJson;
 }
 
 function getSettingsPath(): string {
@@ -109,7 +133,7 @@ function getEncryptedPath(fileName: string): string {
   return path.join(app.getPath("userData"), fileName);
 }
 
-function normalizeVolume(value: unknown): number {
+export function normalizePlaybackVolume(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return 1;
   }
