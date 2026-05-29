@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { appIconPath, applyAppWindowIcon } from "../appIdentity";
 import type { ProviderPlaylistOption } from "./types";
 
 const YOUTUBE_READONLY_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
@@ -240,6 +241,7 @@ async function runInstalledAppOAuthFlow(
     height: 760,
     parent: parentWindow ?? undefined,
     title: "Connect YouTube Playlists",
+    icon: appIconPath,
     backgroundColor: "#0f0f0f",
     webPreferences: {
       contextIsolation: true,
@@ -248,6 +250,7 @@ async function runInstalledAppOAuthFlow(
     }
   });
 
+  applyAppWindowIcon(authWindow);
   attachOAuthWindowPrivacy(authWindow, redirectUri);
 
   return new Promise((resolve, reject) => {

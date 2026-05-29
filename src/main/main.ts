@@ -16,7 +16,7 @@ import {
 } from "./playlistRules";
 import { PullDetector, PullEvent } from "./pullDetector";
 import { applyPlaybackVolumeToWebContents, normalizePlaybackVolume } from "./playerVolume";
-import { appId, appName } from "./appIdentity";
+import { appIconPath, appId, appName, applyAppWindowIcon } from "./appIdentity";
 import {
   getPlaylistProvider,
   listPlaylistProviderAccountActions,
@@ -99,8 +99,6 @@ let settings: AppSettings = createDefaultSettings();
 
 const rendererPath = path.join(__dirname, "..", "renderer", "index.html");
 const localPlayerPath = path.join(__dirname, "..", "renderer", "localPlayer.html");
-const appIconPath = path.join(__dirname, "..", "..", "build", process.platform === "win32" ? "icon.ico" : "icon.png");
-
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.setName(appName);
 if (process.platform === "win32") {
@@ -148,6 +146,7 @@ function createMainWindow(): void {
     }
   });
 
+  applyAppWindowIcon(mainWindow);
   void mainWindow.loadFile(rendererPath);
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -596,6 +595,7 @@ function ensurePlayerWindow(options: { show: boolean; providerId: PlaylistProvid
     }
   });
 
+  applyAppWindowIcon(playerWindow);
   playerWindow.on("closed", () => {
     playerWindow = null;
     playerWindowProviderId = null;
@@ -630,6 +630,7 @@ function openYouTubeLoginWindow(): BrowserWindow {
     }
   });
 
+  applyAppWindowIcon(youtubeLoginWindow);
   youtubeLoginWindow.on("closed", () => {
     youtubeLoginWindow = null;
     void publishYouTubeAuthStatus();
