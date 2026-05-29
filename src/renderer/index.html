@@ -176,10 +176,15 @@
                     <section class="provider-settings-panel active" data-provider-panel="youtube">
                       <div class="section-heading">
                         <h3>YouTube</h3>
+                      </div>
+                      <div class="provider-accounts" data-provider-accounts="youtube"></div>
+                      <div class="section-heading provider-oauth-heading">
+                        <h3>Playlist Library OAuth</h3>
                         <button id="oauthHelpToggle" type="button" class="icon-help" aria-expanded="false" aria-controls="oauthHelp">?</button>
                       </div>
                       <div id="oauthHelp" class="help-panel" hidden>
                         <p>Create a Google Cloud project, enable YouTube Data API v3, configure an External OAuth consent screen, add yourself as a test user, then create a Desktop app OAuth client.</p>
+                        <p>The Client ID and Client Secret let the app ask Google for permission to list your YouTube playlists. Only use them if you want to choose playlists from your YouTube account; manual YouTube URLs and YouTube Premium playback sign-in do not require them.</p>
                         <p>Copy that Desktop app Client ID and Client Secret here. Google treats Desktop app secrets as non-confidential, but this app still stores them encrypted when secure storage is available.</p>
                       </div>
                       <label>
@@ -196,7 +201,6 @@
                           <button id="toggleOAuthClientSecret" type="button">Show</button>
                         </div>
                       </label>
-                      <div class="provider-accounts" data-provider-accounts="youtube"></div>
                     </section>
 
                     <section class="provider-settings-panel" data-provider-panel="local">
