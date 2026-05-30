@@ -21,7 +21,8 @@
     "dev": "npm run build && electron .",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/main/pullDetector.test.js dist/main/combatLogTailer.test.js dist/main/playlistProviders/youtubeProvider.test.js dist/main/playlistProviders/localMediaProvider.test.js dist/main/playlistProviders/index.test.js dist/main/localMediaResolver.test.js dist/main/combatLogDiscovery/windowsCombatLogDiscovery.test.js dist/main/playerLifecycle.test.js dist/main/playlistRules.test.js dist/main/settingsStore.test.js dist/main/playerVolume.test.js dist/main/appIdentity.test.js dist/main/youtubeSessionPrivacy.test.js dist/main/rendererSettingsMarkup.test.js",
-    "smoke:youtube": "npm run build && electron scripts/smoke-youtube-playback.cjs"
+    "smoke:youtube": "npm run build && electron scripts/smoke-youtube-playback.cjs",
+    "screenshots:readme": "npm run build && electron scripts/capture-readme-screenshots.cjs"
   },
   "keywords": [
     "world-of-warcraft",
@@ -33,9 +34,13 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.12.12",
-    "electron": "^39.8.8",
+    "electron": "^42.3.0",
     "electron-builder": "^26.8.1",
     "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "@electron/asar": "^4.2.0",
+    "@electron/get": "^5.0.0"
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.16.0"
