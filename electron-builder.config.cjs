@@ -8,7 +8,10 @@ module.exports = {
     output: "release"
   },
   files: [
-    "dist/**/*",
+    "dist/main/**/*",
+    "dist/renderer/**/*",
+    "!dist/**/*.test.*",
+    "!dist/**/*.map",
     "build/icon.png",
     "build/icon.ico",
     "package.json"
