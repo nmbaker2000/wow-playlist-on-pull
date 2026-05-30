@@ -61,7 +61,7 @@ That protection is best effort. It is not a guarantee that YouTube ads will be r
 
 ## Developing
 
-Use Node.js 22 or newer.
+Use Node.js 22.12 or newer.
 
 ```powershell
 npm ci
