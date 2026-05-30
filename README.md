@@ -6,6 +6,10 @@ It watches your active combat log, detects raid pull starts, and opens a small p
 
 This project is early but usable. Expect rough edges, especially around unsigned Windows builds and YouTube playback behavior.
 
+![WoW Pull Playlist dashboard](docs/images/dashboard.png)
+
+For a screenshot-backed setup walkthrough, see [docs/instructions.md](docs/instructions.md).
+
 ## Install on Windows
 
 1. Open the [latest GitHub Release](https://github.com/nmbaker2000/wow-playlist-on-pull/releases).
@@ -76,6 +80,13 @@ npm run dist:win
 `npm run dist:win` writes the Windows installer to `release/`.
 
 Playlist providers live under `src/main/playlistProviders`. The current providers are YouTube and local media. Combat-log detection and playlist selection are kept separate so new providers can be added without changing pull detection.
+
+To regenerate the README and instructions screenshots after UI changes:
+
+```powershell
+npm run build
+.\node_modules\.bin\electron.cmd scripts\capture-readme-screenshots.cjs
+```
 
 ## Releases
 
