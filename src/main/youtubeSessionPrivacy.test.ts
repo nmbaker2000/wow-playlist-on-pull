@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createCachedYouTubeBlocker,
   createInitialYouTubePrivacyStatus,
+  isAllowedYouTubeBrowserUrl,
   markYouTubePrivacyFailed,
   markYouTubePrivacyReady
 } from "./youtubeSessionPrivacy";
@@ -89,4 +90,17 @@ test("recovers from a failed YouTube blocker cache load by clearing cache and re
   assert.equal(blocker, createdBlocker);
   assert.equal(calls.length, 2);
   assert.deepEqual(removedCachePaths, ["youtube-network-adblock-engine.bin"]);
+});
+
+test("allows only exact top-level YouTube session navigation hosts", () => {
+  assert.equal(isAllowedYouTubeBrowserUrl("https://www.youtube.com/watch?v=yJqZSISuXZM"), true);
+  assert.equal(isAllowedYouTubeBrowserUrl("https://youtube.com/playlist?list=PLabc"), true);
+  assert.equal(isAllowedYouTubeBrowserUrl("https://accounts.google.com/signin"), true);
+  assert.equal(isAllowedYouTubeBrowserUrl("about:blank"), true);
+
+  assert.equal(isAllowedYouTubeBrowserUrl("https://evil.youtube.com/watch?v=yJqZSISuXZM"), false);
+  assert.equal(isAllowedYouTubeBrowserUrl("https://mail.google.com/mail"), false);
+  assert.equal(isAllowedYouTubeBrowserUrl("https://fonts.gstatic.com/s/roboto.woff2"), false);
+  assert.equal(isAllowedYouTubeBrowserUrl("https://accounts.google.com.evil.test/signin"), false);
+  assert.equal(isAllowedYouTubeBrowserUrl("http://www.youtube.com/watch?v=yJqZSISuXZM"), false);
 });

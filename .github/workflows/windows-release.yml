@@ -28,10 +28,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        # actions/checkout v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        # actions/setup-node v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
           cache: npm
@@ -48,11 +50,14 @@ jobs:
       - name: Decode Windows signing certificate
         if: ${{ env.WINDOWS_CERTIFICATE_CONFIGURED == 'true' }}
         shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           $certificatePath = Join-Path $env:RUNNER_TEMP "windows-codesign.pfx"
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}"))
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
           "CSC_LINK=$certificatePath" >> $env:GITHUB_ENV
-          "CSC_KEY_PASSWORD=${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}" >> $env:GITHUB_ENV
+          "CSC_KEY_PASSWORD=$env:WINDOWS_CERTIFICATE_PASSWORD" >> $env:GITHUB_ENV
 
       - name: Disable signing when no certificate is configured
         if: ${{ env.WINDOWS_CERTIFICATE_CONFIGURED != 'true' }}
@@ -69,11 +74,15 @@ jobs:
       - name: Set package version from release tag
         if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          GITHUB_EVENT_NAME_FOR_RELEASE: ${{ github.event_name }}
+          GITHUB_REF_NAME_FOR_RELEASE: ${{ github.ref_name }}
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $tag = "${{ inputs.release_tag }}"
+          if ($env:GITHUB_EVENT_NAME_FOR_RELEASE -eq "workflow_dispatch") {
+            $tag = $env:RELEASE_TAG
           } else {
-            $tag = "${{ github.ref_name }}"
+            $tag = $env:GITHUB_REF_NAME_FOR_RELEASE
           }
 
           if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$') {
@@ -99,7 +108,8 @@ jobs:
             Set-Content -Encoding ascii release\SHA256SUMS.txt
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: windows-installer
           path: |
@@ -112,11 +122,18 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          GITHUB_EVENT_NAME_FOR_RELEASE: ${{ github.event_name }}
+          GITHUB_REF_NAME_FOR_RELEASE: ${{ github.ref_name }}
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $tag = "${{ inputs.release_tag }}"
+          if ($env:GITHUB_EVENT_NAME_FOR_RELEASE -eq "workflow_dispatch") {
+            $tag = $env:RELEASE_TAG
           } else {
-            $tag = "${{ github.ref_name }}"
+            $tag = $env:GITHUB_REF_NAME_FOR_RELEASE
+          }
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$') {
+            Write-Error "Release tag must look like v1.2.3 or v1.2.3-beta.1. Got: $tag"
+            exit 1
           }
           $files = Get-ChildItem -Path release -File |
             Where-Object { $_.Name -like "*Setup*.exe" -or $_.Name -eq "SHA256SUMS.txt" } |
