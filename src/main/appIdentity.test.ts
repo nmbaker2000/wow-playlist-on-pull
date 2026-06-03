@@ -25,10 +25,7 @@ test("Windows package and runtime identity use the app name shown in system UI",
 });
 
 test("all app-created windows use the shared taskbar icon", () => {
-  const sourceFiles = [
-    path.join(__dirname, "..", "..", "src", "main", "main.ts"),
-    path.join(__dirname, "..", "..", "src", "main", "playlistProviders", "youtubeLibrary.ts")
-  ];
+  const sourceFiles = [path.join(__dirname, "..", "..", "src", "main", "main.ts")];
 
   for (const sourceFile of sourceFiles) {
     const source = readFileSync(sourceFile, "utf8");
@@ -42,10 +39,7 @@ test("all app-created windows use the shared taskbar icon", () => {
 });
 
 test("all app-created windows apply Windows taskbar app details", () => {
-  const sourceFiles = [
-    path.join(__dirname, "..", "..", "src", "main", "main.ts"),
-    path.join(__dirname, "..", "..", "src", "main", "playlistProviders", "youtubeLibrary.ts")
-  ];
+  const sourceFiles = [path.join(__dirname, "..", "..", "src", "main", "main.ts")];
 
   for (const sourceFile of sourceFiles) {
     const source = readFileSync(sourceFile, "utf8");
@@ -54,4 +48,11 @@ test("all app-created windows apply Windows taskbar app details", () => {
     assert.ok(windowCount > 0, `${sourceFile} should create at least one BrowserWindow`);
     assert.equal(taskbarDetailCount, windowCount, `${sourceFile} should apply taskbar details to every window`);
   }
+});
+
+test("YouTube OAuth library does not create an embedded login window", () => {
+  const sourceFile = path.join(__dirname, "..", "..", "src", "main", "playlistProviders", "youtubeLibrary.ts");
+  const source = readFileSync(sourceFile, "utf8");
+
+  assert.equal(source.includes("new BrowserWindow("), false);
 });

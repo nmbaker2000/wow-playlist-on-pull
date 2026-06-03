@@ -1,9 +1,10 @@
-import { app, BrowserWindow, safeStorage, shell } from "electron";
+import { app, safeStorage, shell } from "electron";
 import { createServer } from "node:http";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { appIconPath, applyAppWindowIcon } from "../appIdentity";
+import type { AddressInfo } from "node:net";
+import type { BrowserWindow } from "electron";
 import type { ProviderPlaylistOption } from "./types";
 
 const YOUTUBE_READONLY_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
@@ -11,6 +12,7 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const YOUTUBE_PLAYLISTS_URL = "https://www.googleapis.com/youtube/v3/playlists";
 const TOKEN_EXPIRY_SKEW_MS = 60_000;
+const OAUTH_CALLBACK_TIMEOUT_MS = 5 * 60 * 1000;
 
 interface StoredOAuthToken {
   accessToken: string;
@@ -28,6 +30,17 @@ interface GoogleTokenResponse {
   token_type?: string;
   error?: string;
   error_description?: string;
+}
+
+export interface YouTubeOAuthPkcePair {
+  codeVerifier: string;
+  codeChallenge: string;
+}
+
+export interface YouTubeOAuthCallbackServer {
+  redirectUri: string;
+  waitForCode: Promise<string>;
+  close: () => Promise<void>;
 }
 
 interface YouTubePlaylistListResponse {
@@ -137,8 +150,8 @@ export class YouTubePlaylistLibrary {
 
   async connect(parentWindow: BrowserWindow | null): Promise<YouTubeLibraryState> {
     const credentials = this.clientCredentialsProvider();
-    const { code, redirectUri } = await runInstalledAppOAuthFlow(credentials.clientId, parentWindow);
-    const token = await exchangeAuthorizationCode(credentials, code, redirectUri, this.fetchImpl);
+    const { code, redirectUri, codeVerifier } = await runInstalledAppOAuthFlow(credentials.clientId, parentWindow);
+    const token = await exchangeAuthorizationCode(credentials, code, redirectUri, codeVerifier, this.fetchImpl);
     await this.tokenStore.write(token);
     return this.getState();
   }
@@ -211,15 +224,100 @@ export class YouTubePlaylistLibrary {
 
 async function runInstalledAppOAuthFlow(
   clientId: string,
-  parentWindow: BrowserWindow | null
-): Promise<{ code: string; redirectUri: string }> {
+  _parentWindow: BrowserWindow | null
+): Promise<{ code: string; redirectUri: string; codeVerifier: string }> {
   const state = randomBytes(16).toString("hex");
+  const pkce = createYouTubeOAuthPkcePair();
+  const callbackServer = await createYouTubeOAuthCallbackServer(state, OAUTH_CALLBACK_TIMEOUT_MS);
+  const authUrl = buildYouTubeAuthorizationUrl({
+    clientId,
+    redirectUri: callbackServer.redirectUri,
+    state,
+    codeChallenge: pkce.codeChallenge
+  });
+
+  try {
+    await shell.openExternal(authUrl.toString());
+    const code = await callbackServer.waitForCode;
+    return { code, redirectUri: callbackServer.redirectUri, codeVerifier: pkce.codeVerifier };
+  } catch (error) {
+    await callbackServer.close();
+    throw error;
+  }
+}
+
+async function exchangeAuthorizationCode(
+  credentials: YouTubeOAuthClientCredentials,
+  code: string,
+  redirectUri: string,
+  codeVerifier: string,
+  fetchImpl: typeof fetch
+): Promise<StoredOAuthToken> {
+  const body = buildYouTubeAuthorizationCodeTokenBody({
+    credentials,
+    code,
+    redirectUri,
+    codeVerifier
+  });
+  return mapTokenResponse(await postTokenRequest(body, fetchImpl));
+}
+
+export function createYouTubeOAuthPkcePair(randomBytesImpl: typeof randomBytes = randomBytes): YouTubeOAuthPkcePair {
+  const codeVerifier = base64UrlEncode(randomBytesImpl(32));
+  const codeChallenge = base64UrlEncode(createHash("sha256").update(codeVerifier).digest());
+
+  return { codeVerifier, codeChallenge };
+}
+
+export function buildYouTubeAuthorizationUrl(options: {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  codeChallenge: string;
+}): URL {
+  const authUrl = new URL(GOOGLE_AUTH_URL);
+  authUrl.searchParams.set("client_id", options.clientId);
+  authUrl.searchParams.set("redirect_uri", options.redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", YOUTUBE_READONLY_SCOPE);
+  authUrl.searchParams.set("access_type", "offline");
+  authUrl.searchParams.set("prompt", "consent");
+  authUrl.searchParams.set("state", options.state);
+  authUrl.searchParams.set("code_challenge", options.codeChallenge);
+  authUrl.searchParams.set("code_challenge_method", "S256");
+
+  return authUrl;
+}
+
+export function buildYouTubeAuthorizationCodeTokenBody(options: {
+  credentials: YouTubeOAuthClientCredentials;
+  code: string;
+  redirectUri: string;
+  codeVerifier: string;
+}): URLSearchParams {
+  const body = new URLSearchParams({
+    client_id: options.credentials.clientId,
+    code: options.code,
+    code_verifier: options.codeVerifier,
+    grant_type: "authorization_code",
+    redirect_uri: options.redirectUri
+  });
+  if (options.credentials.clientSecret) {
+    body.set("client_secret", options.credentials.clientSecret);
+  }
+  return body;
+}
+
+export async function createYouTubeOAuthCallbackServer(
+  expectedState: string,
+  timeoutMs = OAUTH_CALLBACK_TIMEOUT_MS
+): Promise<YouTubeOAuthCallbackServer> {
   const server = createServer();
   const redirectUri = await new Promise<string>((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      if (!address || typeof address === "string") {
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
         reject(new Error("Unable to start OAuth callback server."));
         return;
       }
@@ -227,162 +325,72 @@ async function runInstalledAppOAuthFlow(
     });
   });
 
-  const authUrl = new URL(GOOGLE_AUTH_URL);
-  authUrl.searchParams.set("client_id", clientId);
-  authUrl.searchParams.set("redirect_uri", redirectUri);
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", YOUTUBE_READONLY_SCOPE);
-  authUrl.searchParams.set("access_type", "offline");
-  authUrl.searchParams.set("prompt", "consent");
-  authUrl.searchParams.set("state", state);
+  let timeout: NodeJS.Timeout | undefined;
+  let settled = false;
+  const close = () =>
+    new Promise<void>((resolve) => {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = undefined;
+      }
+      server.close(() => resolve());
+    });
 
-  const authWindow = new BrowserWindow({
-    width: 980,
-    height: 760,
-    parent: parentWindow ?? undefined,
-    title: "Connect YouTube Playlists",
-    icon: appIconPath,
-    backgroundColor: "#0f0f0f",
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  });
-
-  applyAppWindowIcon(authWindow);
-  attachOAuthWindowPrivacy(authWindow, redirectUri);
-
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const closeServer = () => {
-      server.close();
-    };
+  const waitForCode = new Promise<string>((resolve, reject) => {
     const settle = (callback: () => void) => {
       if (settled) {
         return;
       }
 
       settled = true;
-      callback();
+      void close().then(callback);
     };
+
+    timeout = setTimeout(() => {
+      settle(() => reject(new Error("Google OAuth callback timed out.")));
+    }, timeoutMs);
 
     server.on("request", (request, response) => {
       const requestUrl = new URL(request.url ?? "/", redirectUri);
       const code = requestUrl.searchParams.get("code");
       const returnedState = requestUrl.searchParams.get("state");
       const error = requestUrl.searchParams.get("error");
+      const isCallbackPath = requestUrl.pathname === "/oauth2callback";
 
-      response.writeHead(error ? 400 : 200, { "content-type": "text/html" });
+      response.writeHead(error || !isCallbackPath || !code || returnedState !== expectedState ? 400 : 200, {
+        "connection": "close",
+        "content-type": "text/html"
+      });
       response.end("<html><body><p>You can close this window and return to Pull Playlist.</p></body></html>");
 
-      closeServer();
-      authWindow.close();
+      if (!isCallbackPath) {
+        settle(() => reject(new Error("Google OAuth callback used an invalid path.")));
+        return;
+      }
 
       if (error) {
         settle(() => reject(new Error(`Google OAuth failed: ${error}`)));
         return;
       }
 
-      if (!code || returnedState !== state) {
+      if (!code || returnedState !== expectedState) {
         settle(() => reject(new Error("Google OAuth callback did not include a valid authorization code.")));
         return;
       }
 
-      settle(() => resolve({ code, redirectUri }));
-    });
-
-    authWindow.on("closed", () => {
-      closeServer();
-      settle(() => reject(new Error("YouTube playlist-library connection was cancelled.")));
-    });
-
-    void authWindow.loadURL(authUrl.toString()).catch((error) => {
-      closeServer();
-      settle(() => reject(error));
+      settle(() => resolve(code));
     });
   });
+
+  return { redirectUri, waitForCode, close };
 }
 
-function attachOAuthWindowPrivacy(authWindow: BrowserWindow, redirectUri: string): void {
-  authWindow.webContents.setWindowOpenHandler(({ url }) => {
-    openExternalHttpsUrl(url);
-    return { action: "deny" };
-  });
-
-  authWindow.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
-    callback(false);
-  });
-
-  authWindow.webContents.session.on("will-download", (event) => {
-    event.preventDefault();
-  });
-
-  authWindow.webContents.on("will-navigate", (event, url) => {
-    if (isAllowedOAuthUrl(url, redirectUri)) {
-      return;
-    }
-
-    event.preventDefault();
-    openExternalHttpsUrl(url);
-  });
-}
-
-function openExternalHttpsUrl(value: string): void {
-  try {
-    const url = new URL(value);
-    if (url.protocol === "https:") {
-      void shell.openExternal(url.toString());
-    }
-  } catch {
-    // Ignore malformed navigation attempts.
-  }
-}
-
-function isAllowedOAuthUrl(value: string, redirectUri: string): boolean {
-  try {
-    const url = new URL(value);
-    const callbackUrl = new URL(redirectUri);
-    if (url.origin === callbackUrl.origin && url.pathname === callbackUrl.pathname) {
-      return true;
-    }
-
-    if (url.protocol !== "https:" && url.protocol !== "about:") {
-      return false;
-    }
-
-    return (
-      url.protocol === "about:" ||
-      isHostOrSubdomain(url.hostname, "accounts.google.com") ||
-      isHostOrSubdomain(url.hostname, "google.com") ||
-      isHostOrSubdomain(url.hostname, "gstatic.com") ||
-      isHostOrSubdomain(url.hostname, "googleusercontent.com")
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isHostOrSubdomain(hostname: string, rootDomain: string): boolean {
-  return hostname === rootDomain || hostname.endsWith(`.${rootDomain}`);
-}
-
-async function exchangeAuthorizationCode(
-  credentials: YouTubeOAuthClientCredentials,
-  code: string,
-  redirectUri: string,
-  fetchImpl: typeof fetch
-): Promise<StoredOAuthToken> {
-  const body = new URLSearchParams({
-    client_id: credentials.clientId,
-    code,
-    grant_type: "authorization_code",
-    redirect_uri: redirectUri
-  });
-  if (credentials.clientSecret) {
-    body.set("client_secret", credentials.clientSecret);
-  }
-  return mapTokenResponse(await postTokenRequest(body, fetchImpl));
+function base64UrlEncode(value: Buffer): string {
+  return value
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }
 
 async function refreshAccessToken(

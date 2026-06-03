@@ -28,6 +28,11 @@ interface CreateCachedYouTubeBlockerOptions {
 }
 
 const YOUTUBE_BLOCKER_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const ALLOWED_YOUTUBE_TOP_LEVEL_NAVIGATION_HOSTS = new Set([
+  "www.youtube.com",
+  "youtube.com",
+  "accounts.google.com"
+]);
 
 let blockerReady: Promise<void> | null = null;
 let blocker: ElectronBlocker | null = null;
@@ -235,25 +240,15 @@ function openExternalHttpsUrl(value: string): void {
   }
 }
 
-function isAllowedYouTubeBrowserUrl(value: string): boolean {
+export function isAllowedYouTubeBrowserUrl(value: string): boolean {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" && url.protocol !== "about:") {
       return false;
     }
 
-    return (
-      url.protocol === "about:" ||
-      isHostOrSubdomain(url.hostname, "youtube.com") ||
-      isHostOrSubdomain(url.hostname, "google.com") ||
-      isHostOrSubdomain(url.hostname, "gstatic.com") ||
-      isHostOrSubdomain(url.hostname, "googleusercontent.com")
-    );
+    return url.protocol === "about:" || ALLOWED_YOUTUBE_TOP_LEVEL_NAVIGATION_HOSTS.has(url.hostname);
   } catch {
     return false;
   }
-}
-
-function isHostOrSubdomain(hostname: string, rootDomain: string): boolean {
-  return hostname === rootDomain || hostname.endsWith(`.${rootDomain}`);
 }
